@@ -1,0 +1,23 @@
+{
+  "finding_index": 2,
+  "verdict": "Denied",
+  "gates": {
+    "source": "fail",
+    "sink": "fail",
+    "missing_control": "fail"
+  },
+  "root_cause": "",
+  "changes": [],
+  "remaining_risks": [],
+  "recommendations": [],
+  "summary": "Denied by policy (policy_unavailable_fail_closed). No patch generated.",
+  "severity": "CRITICAL",
+  "title": "Shared Xcode pre-build script enables supply-chain command injection",
+  "file": "NetNewsWire.xcodeproj/xcshareddata/xcschemes/NetNewsWire-iOS.xcscheme:9-24",
+  "mode": "fix",
+  "generated": "2026-07-04T05:12:29.786828+00:00",
+  "policy_action": "guidance_only",
+  "policy_reason": "policy_unavailable_fail_closed",
+  "final_verdict": "REJECT",
+  "diff_captured": false
+}

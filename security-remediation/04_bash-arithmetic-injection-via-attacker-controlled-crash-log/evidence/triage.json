@@ -1,0 +1,23 @@
+{
+  "finding_index": 4,
+  "verdict": "Denied",
+  "gates": {
+    "source": "fail",
+    "sink": "fail",
+    "missing_control": "fail"
+  },
+  "root_cause": "",
+  "changes": [],
+  "remaining_risks": [],
+  "recommendations": [],
+  "summary": "Denied by policy (policy_unavailable_fail_closed). No patch generated.",
+  "severity": "HIGH",
+  "title": "Bash arithmetic injection via attacker-controlled crash log fields",
+  "file": "scripts/symbolicate_json_crash.sh:209-221",
+  "mode": "fix",
+  "generated": "2026-07-04T05:12:29.789454+00:00",
+  "policy_action": "guidance_only",
+  "policy_reason": "policy_unavailable_fail_closed",
+  "final_verdict": "REJECT",
+  "diff_captured": false
+}

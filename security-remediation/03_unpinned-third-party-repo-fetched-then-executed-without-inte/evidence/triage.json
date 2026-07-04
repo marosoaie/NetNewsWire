@@ -1,0 +1,23 @@
+{
+  "finding_index": 3,
+  "verdict": "Denied",
+  "gates": {
+    "source": "fail",
+    "sink": "fail",
+    "missing_control": "fail"
+  },
+  "root_cause": "",
+  "changes": [],
+  "remaining_risks": [],
+  "recommendations": [],
+  "summary": "Denied by policy (policy_unavailable_fail_closed). No patch generated.",
+  "severity": "HIGH",
+  "title": "Unpinned third-party repo fetched then executed without integrity check",
+  "file": "scan-netnewswire.sh:49-62",
+  "mode": "fix",
+  "generated": "2026-07-04T05:12:29.788224+00:00",
+  "policy_action": "guidance_only",
+  "policy_reason": "policy_unavailable_fail_closed",
+  "final_verdict": "REJECT",
+  "diff_captured": false
+}

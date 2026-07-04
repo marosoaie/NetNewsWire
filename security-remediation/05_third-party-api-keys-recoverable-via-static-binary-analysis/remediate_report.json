@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "finding_id": "defa43-finding-Modules/Secrets/Sources/Secrets/SecretKey.swift.gyb-42",
+  "attempt": 1,
+  "max_attempts": 2,
+  "status": "deny",
+  "finding": {
+    "_source": "vvaharness s8 (verbatim Finding fields)",
+    "title": "Third-party API keys recoverable via static binary analysis",
+    "vuln_class": "CWE-321",
+    "cwe": "CWE-321",
+    "file": "Modules/Secrets/Sources/Secrets/SecretKey.swift.gyb",
+    "line_start": 42,
+    "line_end": 55,
+    "source_ref": null,
+    "sink_ref": null,
+    "description": "",
+    "recommendation": "",
+    "code_snippet": "private static let salt: [UInt8] = [\n  // 64 bytes from build-time os.urandom(64) \u2014 hardcoded in binary\n]\n\nprivate static func decode(_ encoded: [UInt8]) -> String {\n    guard !isRunningUnitTests else { return \"\" }\n    let salt = Self.salt\n    return String(decoding: encoded.enumerated().map { (offset, element) in\n        element ^ salt[offset % salt.count]   // both operands are in the binary\n    }, as: UTF8.self)\n}",
+    "impact": "",
+    "exploit_scenario": "",
+    "preconditions": [],
+    "confidence": 0.0,
+    "votes": 0,
+    "verdict": null,
+    "verdict_confidence": null,
+    "cvss_vector": null,
+    "cvss_score": null,
+    "cvss_rating": null
+  },
+  "patch": {
+    "_source": "s10 remediation (filled in by remediation stage)",
+    "remediation_summary": "Denied by policy (policy_unavailable_fail_closed). No patch generated.",
+    "files_touched": [],
+    "diff": ""
+  },
+  "validation": {
+    "_source": "s11 validation (empty on input; written by validator)",
+    "fix_status": null,
+    "raw_score": null,
+    "merge_readiness": null,
+    "gate_scores": null,
+    "justification": null,
+    "conditions_for_full_fix": [],
+    "recommendations": []
+  }
+}

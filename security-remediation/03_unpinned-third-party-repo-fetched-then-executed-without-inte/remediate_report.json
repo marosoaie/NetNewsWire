@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "finding_id": "2a4ac6-finding-scan-netnewswire.sh-49",
+  "attempt": 1,
+  "max_attempts": 2,
+  "status": "deny",
+  "finding": {
+    "_source": "vvaharness s8 (verbatim Finding fields)",
+    "title": "Unpinned third-party repo fetched then executed without integrity check",
+    "vuln_class": "CWE-494",
+    "cwe": "CWE-494",
+    "file": "scan-netnewswire.sh",
+    "line_start": 49,
+    "line_end": 62,
+    "source_ref": null,
+    "sink_ref": null,
+    "description": "",
+    "recommendation": "",
+    "code_snippet": "  git clone --depth 1 \"$HARNESS_REPO\" \"$HARNESS_DIR\"\n...\n  pip install --quiet --upgrade pip\n  pip install --quiet .",
+    "impact": "",
+    "exploit_scenario": "",
+    "preconditions": [],
+    "confidence": 0.0,
+    "votes": 0,
+    "verdict": null,
+    "verdict_confidence": null,
+    "cvss_vector": null,
+    "cvss_score": null,
+    "cvss_rating": null
+  },
+  "patch": {
+    "_source": "s10 remediation (filled in by remediation stage)",
+    "remediation_summary": "Denied by policy (policy_unavailable_fail_closed). No patch generated.",
+    "files_touched": [],
+    "diff": ""
+  },
+  "validation": {
+    "_source": "s11 validation (empty on input; written by validator)",
+    "fix_status": null,
+    "raw_score": null,
+    "merge_readiness": null,
+    "gate_scores": null,
+    "justification": null,
+    "conditions_for_full_fix": [],
+    "recommendations": []
+  }
+}

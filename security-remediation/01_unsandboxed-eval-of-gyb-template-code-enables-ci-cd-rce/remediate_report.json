@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "finding_id": "fbe735-finding-buildscripts/gyb.py-404",
+  "attempt": 1,
+  "max_attempts": 2,
+  "status": "deny",
+  "finding": {
+    "_source": "vvaharness s8 (verbatim Finding fields)",
+    "title": "Unsandboxed eval of .gyb template code enables CI/CD RCE",
+    "vuln_class": "CWE-94",
+    "cwe": "CWE-94",
+    "file": "buildscripts/gyb.py",
+    "line_start": 404,
+    "line_end": 725,
+    "source_ref": null,
+    "sink_ref": null,
+    "description": "",
+    "recommendation": "",
+    "code_snippet": "# ParseContext.__init__, line 404-408: template file read unconditionally\nwith io.open(os.path.normpath(filename), encoding='utf-8') as f:\n    self.template = f.read()\n\n# Code.__init__, line 716: compiled with no restriction\nself.code = compile(source, context.filename, eval_exec)\n\n# Code.execute, line 725: evaluated with full builtins accessible\nresult = eval(self.code, context.local_bindings)",
+    "impact": "",
+    "exploit_scenario": "",
+    "preconditions": [],
+    "confidence": 0.0,
+    "votes": 0,
+    "verdict": null,
+    "verdict_confidence": null,
+    "cvss_vector": null,
+    "cvss_score": null,
+    "cvss_rating": null
+  },
+  "patch": {
+    "_source": "s10 remediation (filled in by remediation stage)",
+    "remediation_summary": "Denied by policy (policy_unavailable_fail_closed). No patch generated.",
+    "files_touched": [],
+    "diff": ""
+  },
+  "validation": {
+    "_source": "s11 validation (empty on input; written by validator)",
+    "fix_status": null,
+    "raw_score": null,
+    "merge_readiness": null,
+    "gate_scores": null,
+    "justification": null,
+    "conditions_for_full_fix": [],
+    "recommendations": []
+  }
+}

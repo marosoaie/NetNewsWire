@@ -1,0 +1,52 @@
+{
+  "tool": "vvaharness",
+  "version": "1.1.0",
+  "started": "2026-07-03T17:24:00.722153+00:00",
+  "argv": [
+    "--repo",
+    "/Users/mihaiarosoaie/projects/NetNewsWire",
+    "--resume"
+  ],
+  "config_profile": "/Users/mihaiarosoaie/vvah-netnewswire/visa-vulnerability-agentic-harness/.venv/lib/python3.13/site-packages/vvaharness/config/profiles/default.yaml",
+  "config_sha256": "645a36d472fbc43d7b2b8806eea0dba708c51ec9a8b996ece9bbd1fac99e2b61",
+  "config_local_sha256": null,
+  "models": {
+    "autoexclude": {
+      "id": "claude-sonnet-4-6",
+      "via": "cli"
+    },
+    "preprocess": {
+      "id": "claude-sonnet-4-6",
+      "via": "cli"
+    },
+    "threatmodel": {
+      "id": "claude-sonnet-4-6",
+      "via": "cli"
+    },
+    "decompose": {
+      "id": "claude-sonnet-4-6",
+      "via": "cli"
+    },
+    "deepdive": {
+      "id": "claude-sonnet-4-6",
+      "via": "cli"
+    },
+    "verify": {
+      "id": "claude-sonnet-4-6",
+      "via": "cli"
+    },
+    "dedup": {
+      "id": "claude-sonnet-4-6",
+      "via": "cli"
+    },
+    "chain": {
+      "id": "claude-sonnet-4-6",
+      "via": "cli"
+    }
+  },
+  "target_git_sha": "808403b005f21118c9c2096ae74c7dd4e763cf72",
+  "per_stage_cost": null,
+  "exit_code": 0,
+  "ended": "2026-07-04T05:12:29.939369+00:00",
+  "duration_sec": 42509.2
+}
