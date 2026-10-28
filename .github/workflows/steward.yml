@@ -1,0 +1,83 @@
+name: Steward
+
+# This fork replays merged changes as pull requests so that Steward
+# (github.com/marosoaie/swift-steward) checks real code: both apps' build
+# diagnostics and SwiftLint's on the lines each pull request changes.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  steward:
+    runs-on: macos-26
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Select Xcode 26.6
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
+
+      - name: Generate the secrets sources
+        run: PROJECT_DIR="$GITHUB_WORKSPACE" ./buildscripts/updateSecrets.sh
+
+      # Two things these replays' project needs on a runner, both fixed
+      # upstream later, in the working tree only. Its resources come from
+      # synchronized folders, which copy a folder Xcode doesn't know as a
+      # bundle file by file, and Xcode knows `.nnwtheme` only where
+      # NetNewsWire is installed: the themes' Info.plist, stylesheet.css and
+      # template.html collide, so their files go (the folders stay, since
+      # some projects name one). And two script phases re-sign with the
+      # build's identity, which an unsigned build hasn't got, so their
+      # `codesign` calls become no-ops.
+      - name: Prepare an unsigned build
+        run: |
+          find Shared/Resources -path '*.nnwtheme/*' -delete
+          sed -i '' 's/codesign --verbose --force/: &/g' NetNewsWire.xcodeproj/project.pbxproj
+
+      # The logs go to the repository's root, where Steward reads them.
+      - name: Build for macOS
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild build -project NetNewsWire.xcodeproj -scheme NetNewsWire \
+            -destination 'generic/platform=macOS' -xcconfig .github/steward-no-signing.xcconfig \
+            -skipPackagePluginValidation -skipMacroValidation 2>&1 | tee build-macos.log
+
+      - name: Build for the iOS Simulator
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild build -project NetNewsWire.xcodeproj -scheme NetNewsWire-iOS \
+            -destination 'generic/platform=iOS Simulator' -xcconfig .github/steward-no-signing.xcconfig \
+            -skipPackagePluginValidation -skipMacroValidation 2>&1 | tee build-ios.log
+
+      - name: SwiftLint
+        if: ${{ !cancelled() }}
+        run: |
+          which swiftlint || brew install swiftlint
+          swiftlint version
+          swiftlint lint --quiet --reporter xcode | tee swiftlint.log
+
+      - name: Upload the logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs
+          path: |
+            build-macos.log
+            build-ios.log
+            swiftlint.log
+          if-no-files-found: warn
+
+      # Pinned to a commit until steward-action tags v1.
+      - name: Steward
+        if: ${{ !cancelled() }}
+        uses: marosoaie/steward-action@325c70a2ac8134175f820e040b7809b63dfdb4dd
